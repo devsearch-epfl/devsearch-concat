@@ -93,7 +93,8 @@ object Coordinator {
   def isTextFileSlow(file: File): Boolean = {
     try {
       val command = Seq("file", "-i", file.toString)
-      val fileType = command.!!
+      /* Run the file command and get the output */
+      val fileType = Process(command).!!
       fileType.dropWhile(_ != ':').takeWhile(_ != ';').contains("text")
     } catch {
       case a: Throwable =>
