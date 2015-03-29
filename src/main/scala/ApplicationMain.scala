@@ -39,13 +39,16 @@ object ParallelConcat {
       fail(s"Found $file in the repository root which is not a directory!")
     }
 
-    for(langFolder <- repoRoot.listFiles) {
+    for((langFolder, idx) <- repoRoot.listFiles.zipWithIndex) {
+
+      val out = new File(outputFolder, langFolder.getName)
+      out.mkdir()
 
       /* Create new actor system */
-      val system = ActorSystem(s"ParallelConcat-${langFolder.getName}")
+      val system = ActorSystem(s"ParallelConcat-$idx")
 
       /* Initiate actors */
-      val master = system.actorOf(Coordinator.props(langFolder, outputFolder, numWorkers))
+      val master = system.actorOf(Coordinator.props(langFolder, out, numWorkers))
       val workers = Vector.fill(numWorkers)(system.actorOf(Worker.props(master)))
 
       /* Start working */
