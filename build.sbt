@@ -12,3 +12,4 @@ libraryDependencies ++= Seq(
 )
 
 resolvers += Resolver.sonatypeRepo("public")
+
