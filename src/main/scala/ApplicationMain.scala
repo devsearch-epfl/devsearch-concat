@@ -1,9 +1,13 @@
 import java.io.File
+import java.util.concurrent.Executors
 
 import actors.Worker.Begin
 import actors.{Worker, Coordinator}
 import akka.actor.ActorSystem
+import com.typesafe.config.ConfigFactory
 import scopt.OptionParser
+
+import scala.concurrent.ExecutionContext
 
 object ParallelConcat {
 
@@ -34,6 +38,7 @@ object ParallelConcat {
 
 
     val numWorkers = conf.parallelism
+    val executionContext = ExecutionContext.fromExecutor(Executors.newFixedThreadPool(numWorkers))
 
     repoRoot.listFiles.filterNot(_.isDirectory).foreach { file =>
       fail(s"Found $file in the repository root which is not a directory!")
@@ -45,7 +50,7 @@ object ParallelConcat {
       out.mkdir()
 
       /* Create new actor system */
-      val system = ActorSystem(s"ParallelConcat-$idx")
+      val system = ActorSystem(s"ParallelConcat-$idx", defaultExecutionContext = Some(executionContext))
 
       /* Initiate actors */
       val master = system.actorOf(Coordinator.props(langFolder, out, numWorkers))
