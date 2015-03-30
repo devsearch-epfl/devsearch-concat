@@ -1,13 +1,13 @@
 package actors
 
-import java.awt.datatransfer.DataFlavor
 import java.io.File
 import java.nio.file.Files
 
 import actors.Coordinator.{BlobResponse, FileResponse, Shutdown}
 import actors.Worker.{Finished, FileRequest, BlobRequest}
 import akka.actor.{Actor, Props}
-import sys.process._
+import org.apache.tika.detect.TextDetector
+import org.apache.tika.Tika
 
 /**
  * The coordinator is in charge of listing the files in the input directory and
@@ -61,47 +61,15 @@ object Coordinator {
 
   case object Shutdown
 
-  private val textTypes = collection.mutable.Map.empty[DataFlavor, Boolean]
-
   /**
-   * Checks whether a file is a text file. It first tries to do it with only java libraries
-   * which is surprisingly not very reliable. If it can't get an answer, it resolves to use
-   * the slow method, but caches the result in the textTypes map to speed up things if
-   * it encounters another file with the same mime type
+   * Checks whether a file is a text file.
    *
    * @param file The file to check
    * @return true if file is a text file
    */
-  def isTextFile(file : File): Boolean = {
-    /* This is a fast but apparently unreliable method */
-    val contentType = new DataFlavor(Files.probeContentType(file.toPath))
-    val isProbableText =  contentType.isFlavorTextType
-
-    /* We fallback to the slow method when we are not sure */
-    /* and use caching to speed up things */
-    isProbableText || textTypes.getOrElseUpdate(contentType, isTextFileSlow(file))
-  }
-
-
-  /**
-   * Tests whether a file is a text file using the unix file utility
-   * Since it has to spawn a new process to do it's job, it is pretty slow
-   *
-   * @param file The file to check
-   * @return true if file is a text file
-   */
-  def isTextFileSlow(file: File): Boolean = {
-    try {
-      val command = Seq("file", "-i", file.toString)
-      /* Run the file command and get the output */
-      val fileType = Process(command).!!
-      fileType.dropWhile(_ != ':').takeWhile(_ != ';').contains("text")
-    } catch {
-      case a: Throwable =>
-        println(s"Cannot find whether $file is a text file");
-        a.printStackTrace
-        false
-    }
+  def isTextFile(file: File): Boolean = {
+    val contentType = Option(new Tika(new TextDetector()).detect(file))
+    contentType.map(_.contains("text")).getOrElse(false)
   }
 
   /**

@@ -28,9 +28,6 @@ class Worker(master: ActorRef) extends Actor with ActorLogging {
   /* Temporary file we have not written yet */
   var tempFile = Option.empty[File]
 
-  /* Last IO operation */
-  var lastFuture = Option.empty[Future[Unit]]
-
   def receive = {
     /* Start to work */
     case Begin => master ! BlobRequest
