@@ -50,6 +50,10 @@ class Worker(master: ActorRef) extends Actor with ActorLogging {
       val header = s"$fileSize:$file\n".getBytes("UTF-8")
       val separator = "\n".getBytes("UTF-8")
       val bytesToWrite = header.length + fileSize + separator.length
+
+      /* Let's hope this never happen */
+      assert(bytesToWrite <= maxSize)
+
       if (bytesToWrite + bytesWritten > maxSize) {
         /* The blob is full */
         tempFile = Some(file)
