@@ -1,7 +1,7 @@
 package actors
 
-import java.io.File
-import java.nio.file.Files
+import java.io.{IOException, File}
+import java.nio.file.{LinkOption, Files}
 
 import actors.Coordinator.{BlobResponse, FileResponse, Shutdown}
 import actors.Worker.{Finished, FileRequest, BlobRequest}
@@ -67,9 +67,11 @@ object Coordinator {
    * @param file The file to check
    * @return true if file is a text file
    */
-  def isTextFile(file: File): Boolean = {
+  def isTextFile(file: File): Boolean = try {
     val contentType = Option(new Tika(new TextDetector()).detect(file))
     contentType.map(_.contains("text")).getOrElse(false)
+  } catch {
+    case o : IOException => false
   }
 
   /**
@@ -80,9 +82,9 @@ object Coordinator {
    */
   def isGoodFile(file: File): Boolean = {
     lazy val hidden = file.isHidden
-    lazy val link = Files.isSymbolicLink(file.toPath)
+    lazy val regular = Files.isRegularFile(file.toPath, LinkOption.NOFOLLOW_LINKS)
     lazy val text = isTextFile(file)
-    !hidden && !link && (file.isDirectory || text)
+    !hidden && regular && (file.isDirectory || text)
   }
 
   /** List all the files in a repository recursively
