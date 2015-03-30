@@ -11,11 +11,11 @@ import scala.concurrent.ExecutionContext
 
 object ParallelConcat {
 
-  case class Config(repoRoot : String = "", outputFolder : String = "", parallelism : Int = 4)
+  case class Config(repoRoot: String = "", outputFolder: String = "", parallelism: Int = 4)
 
   def main(args: Array[String]) {
 
-    val parser : OptionParser[Config] = new OptionParser[Config]("ParallelConcat"){
+    val parser: OptionParser[Config] = new OptionParser[Config]("ParallelConcat") {
       opt[Int]('j', "jobs").text("Maximum number of jobs to run").action((j, c) => c.copy(parallelism = j))
       arg[String]("<REPO_ROOT>").text("Repository root").action((repo, c) => c.copy(repoRoot = repo))
       arg[String]("<OUTPUT_FOLDER>").text("Output folder for big files").action((out, c) => c.copy(outputFolder = out))
@@ -34,19 +34,23 @@ object ParallelConcat {
     if (!repoRoot.isDirectory) fail("Repository root is not a directory")
     if (!outputFolder.isDirectory) fail("Output folder is not a directory")
 
-    if(!outputFolder.list.isEmpty) fail("Output folder is not empty")
+    if (!outputFolder.list.isEmpty) fail("Output folder is not empty")
 
 
     val numWorkers = conf.parallelism
-    val executionContext = ExecutionContext.fromExecutor(Executors.newFixedThreadPool(numWorkers))
+    val threadPool = Executors.newFixedThreadPool(numWorkers)
+    val executionContext = ExecutionContext.fromExecutor(threadPool)
 
     repoRoot.listFiles.filterNot(_.isDirectory).foreach { file =>
       fail(s"Found $file in the repository root which is not a directory!")
     }
 
-    for((langFolder, idx) <- repoRoot.listFiles.zipWithIndex) {
+    for ((langFolder, idx) <- repoRoot.listFiles.zipWithIndex) {
 
-      val out = new File(outputFolder, langFolder.getName)
+      val language = langFolder.getName
+      println(s"Starting work for language ${language}")
+
+      val out = new File(outputFolder, language)
       out.mkdir()
 
       /* Create new actor system */
@@ -63,7 +67,11 @@ object ParallelConcat {
 
       /* Wait for termination */
       system.awaitTermination()
+
+      println(s"Finished working for language ${language}")
     }
+
+    threadPool.shutdown()
   }
 }
 

@@ -82,9 +82,9 @@ object Coordinator {
    */
   def isGoodFile(file: File): Boolean = {
     lazy val hidden = file.isHidden
-    lazy val regular = Files.isRegularFile(file.toPath, LinkOption.NOFOLLOW_LINKS)
+    lazy val link = Files.isSymbolicLink(file.toPath)
     lazy val text = isTextFile(file)
-    !hidden && regular && (file.isDirectory || text)
+    !hidden && !link && (file.isDirectory || text)
   }
 
   /** List all the files in a repository recursively
