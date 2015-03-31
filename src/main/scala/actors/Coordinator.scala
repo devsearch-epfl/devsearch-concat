@@ -5,7 +5,7 @@ import java.nio.file.{LinkOption, Files}
 
 import actors.Coordinator.{BlobResponse, FileResponse, Shutdown}
 import actors.Worker.{Finished, FileRequest, BlobRequest}
-import akka.actor.{Actor, Props}
+import akka.actor.{ActorLogging, Actor, Props}
 import org.apache.tika.detect.TextDetector
 import org.apache.tika.Tika
 
@@ -17,7 +17,7 @@ import org.apache.tika.Tika
  * @param outputFolder  The output folder where to output the big blobs
  * @param numWorkers The number of workers that it will have to coordinate
  */
-case class Coordinator(langFolder: File, outputFolder: File, numWorkers: Int) extends Actor {
+case class Coordinator(langFolder: File, outputFolder: File, numWorkers: Int) extends Actor with ActorLogging {
 
   var files = Coordinator.listFilesRec(langFolder)
   var currentBlobNum = 0
@@ -37,7 +37,18 @@ case class Coordinator(langFolder: File, outputFolder: File, numWorkers: Int) ex
     case FileRequest => files match {
       case head #:: tail =>
         files = tail
-        sender ! FileResponse(head)
+
+        /* One file should always be significantly smaller than the size of a blob */
+        if(head.length > blobSize/2) {
+          /* When the file gets close to the size of a blob, we risk looping forever
+            To avoid this, we drop any file that is larger than half the size of a blob */
+          log.warning(s"Dropping file $head because it is suspiciously large")
+
+          /* Resend request */
+          self.!(FileRequest)(sender)
+        } else {
+          sender ! FileResponse(head)
+        }
       /* If there are no more files, shutdown workers */
       case _ => sender ! Shutdown
     }
