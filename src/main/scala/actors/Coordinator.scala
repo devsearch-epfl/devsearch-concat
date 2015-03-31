@@ -1,7 +1,7 @@
 package actors
 
 import java.io.{IOException, File}
-import java.nio.file.{LinkOption, Files}
+import java.nio.file.{InvalidPathException, LinkOption, Files}
 
 import actors.Coordinator.{BlobResponse, FileResponse, Shutdown}
 import actors.Worker.{Finished, FileRequest, BlobRequest}
@@ -91,11 +91,15 @@ object Coordinator {
    * @param file The file that we want to test
    * @return true if file is a text file not hidden and not a link
    */
-  def isGoodFile(file: File): Boolean = {
+  def isGoodFile(file: File): Boolean = try {
     lazy val hidden = file.isHidden
     lazy val link = Files.isSymbolicLink(file.toPath)
     lazy val text = isTextFile(file)
     !hidden && !link && (file.isDirectory || text)
+  } catch {
+    case e @ InvalidPathException =>
+      Console.err.println(s"Can't convert $file to path, malformed input or invalid characters!")
+      false
   }
 
   /** List all the files in a repository recursively
