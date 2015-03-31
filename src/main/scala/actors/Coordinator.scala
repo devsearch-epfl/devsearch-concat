@@ -82,7 +82,9 @@ object Coordinator {
     val contentType = Option(new Tika(new TextDetector()).detect(file))
     contentType.map(_.contains("text")).getOrElse(false)
   } catch {
-    case o : IOException => false
+    case o @ IOException =>
+      Console.err.println(s"Can't open $file to check that!")
+      false
   }
 
   /**
