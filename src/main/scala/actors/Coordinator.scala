@@ -82,7 +82,7 @@ object Coordinator {
     val contentType = Option(new Tika(new TextDetector()).detect(file))
     contentType.map(_.contains("text")).getOrElse(false)
   } catch {
-    case o @ IOException =>
+    case o : IOException =>
       Console.err.println(s"Can't open $file to check that!")
       false
   }
@@ -99,7 +99,7 @@ object Coordinator {
     lazy val text = isTextFile(file)
     !hidden && !link && (file.isDirectory || text)
   } catch {
-    case e @ InvalidPathException =>
+    case e : InvalidPathException =>
       Console.err.println(s"Can't convert $file to path, malformed input or invalid characters!")
       false
   }
