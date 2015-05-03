@@ -22,7 +22,10 @@ case class Coordinator(langFolder: File, outputFolder: File, numWorkers: Int) ex
   var files = Coordinator.listFilesRec(langFolder)
   var currentBlobNum = 0
   var numFinished = 0
-  val blobSize = (64L * 10L) << 20 // 640 Mb
+  val blobSize = 640L << 20 // 640 Mb
+
+  /** Text files bigger than 120Mb are probably not source code */
+  val maxSize = 120L << 20 // 120Mb
 
   def receive = {
     /* Worker is done doing its work */
@@ -38,10 +41,7 @@ case class Coordinator(langFolder: File, outputFolder: File, numWorkers: Int) ex
       case head #:: tail =>
         files = tail
 
-        /* One file should always be significantly smaller than the size of a blob */
-        if(head.length > blobSize/2) {
-          /* When the file gets close to the size of a blob, we risk looping forever
-            To avoid this, we drop any file that is larger than half the size of a blob */
+        if(head.length > maxSize) {
           log.warning(s"Dropping file $head because it is suspiciously large")
 
           /* Resend request */
