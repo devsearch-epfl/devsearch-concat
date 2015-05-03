@@ -1,6 +1,5 @@
 import java.nio.file.{Path, Files}
 import java.util
-import java.util.function.IntFunction
 
 import actors.Worker
 import de.svenjacobs.loremipsum.LoremIpsum
