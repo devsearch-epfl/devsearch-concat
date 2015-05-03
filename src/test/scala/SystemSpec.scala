@@ -34,13 +34,11 @@ class SystemSpec extends WordSpecLike with Matchers {
 
       ParallelConcat.main(Array("-j", "1") ++ Array(rootDir, resDir).map(_.toAbsolutePath.toString))
 
-      val blobs = Files.list(Files.list(resDir).findFirst.get).toArray(new IntFunction[Array[Path]] {
-        override def apply(value: Int): Array[Path] = new Array[Path](value)
-      })
+      val blobs = resDir.toFile.listFiles()(0).listFiles()
 
       blobs.size should equal(1)
 
-      val resSize = Files.size(blobs(0))
+      val resSize = Files.size(blobs(0).toPath)
 
       resSize should be > totalSize
 
