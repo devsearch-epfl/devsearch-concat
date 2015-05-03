@@ -1,13 +1,11 @@
-package actors
+package devsearch.concat.actors
 
 import java.io._
 
-import actors.Coordinator.{FileResponse, BlobResponse, Shutdown}
-import actors.Worker.{Finished, FileRequest, Begin, BlobRequest}
-import akka.actor.{ActorRef, Actor, ActorLogging, Props}
+import akka.actor.{Actor, ActorLogging, ActorRef, Props}
+import devsearch.concat.actors.Coordinator.{BlobResponse, FileResponse, Shutdown}
+import devsearch.concat.actors.Worker.{Begin, BlobRequest, FileRequest, Finished}
 import org.kamranzafar.jtar.{TarEntry, TarOutputStream}
-
-import scala.concurrent.Future
 
 /**
  * The worker actor is the one in charge of creating the large

@@ -1,7 +1,8 @@
 import java.nio.file.{Path, Files}
 import java.util
 
-import actors.Worker
+import devsearch.concat.Main
+import devsearch.concat.actors.Worker
 import de.svenjacobs.loremipsum.LoremIpsum
 import org.scalatest.{Matchers, WordSpecLike}
 
@@ -31,7 +32,7 @@ class SystemSpec extends WordSpecLike with Matchers {
 
       val resDir = Files.createTempDirectory("resDir")
 
-      ParallelConcat.main(Array("-j", "1") ++ Array(rootDir, resDir).map(_.toAbsolutePath.toString))
+      Main.main(Array("-j", "1") ++ Array(rootDir, resDir).map(_.toAbsolutePath.toString))
 
       val blobs = resDir.toFile.listFiles()(0).listFiles()
 

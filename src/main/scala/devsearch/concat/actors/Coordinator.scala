@@ -1,13 +1,13 @@
-package actors
+package devsearch.concat.actors
 
-import java.io.{IOException, File}
-import java.nio.file.{InvalidPathException, LinkOption, Files}
+import java.io.{File, IOException}
+import java.nio.file.{Files, InvalidPathException}
 
-import actors.Coordinator.{BlobResponse, FileResponse, Shutdown}
-import actors.Worker.{Finished, FileRequest, BlobRequest}
-import akka.actor.{ActorLogging, Actor, Props}
-import org.apache.tika.detect.TextDetector
+import akka.actor.{Actor, ActorLogging, Props}
+import devsearch.concat.actors.Coordinator.{BlobResponse, FileResponse, _}
+import devsearch.concat.actors.Worker._
 import org.apache.tika.Tika
+import org.apache.tika.detect.TextDetector
 
 /**
  * The coordinator is in charge of listing the files in the input directory and

@@ -1,15 +1,16 @@
+package devsearch.concat
+
 import java.io.File
 import java.util.concurrent.Executors
 
-import actors.Worker.Begin
-import actors.{Worker, Coordinator}
 import akka.actor.ActorSystem
-import com.typesafe.config.ConfigFactory
+import devsearch.concat.actors.{Coordinator, Worker}
+import devsearch.concat.actors.Worker.Begin
 import scopt.OptionParser
 
 import scala.concurrent.ExecutionContext
 
-object ParallelConcat {
+object Main {
 
   case class Config(repoRoot: String = "", outputFolder: String = "", parallelism: Int = 4)
 
@@ -56,7 +57,7 @@ object ParallelConcat {
       /* Create new actor system */
       val system = ActorSystem(s"ParallelConcat-$idx", defaultExecutionContext = Some(executionContext))
 
-      /* Initiate actors */
+      /* Initiate devsearch.concat.actors */
       val master = system.actorOf(Coordinator.props(langFolder, out, numWorkers))
       val workers = Vector.fill(numWorkers)(system.actorOf(Worker.props(master)))
 

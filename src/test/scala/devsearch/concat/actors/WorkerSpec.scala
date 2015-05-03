@@ -1,6 +1,6 @@
-package actors
+package devsearch.concat.actors
 
-import actors.Worker.{BlobRequest, Begin}
+import devsearch.concat.actors.Worker.{BlobRequest, Begin}
 import akka.actor.ActorSystem
 import akka.testkit.{  TestKit, ImplicitSender }
 import org.scalatest.WordSpecLike
