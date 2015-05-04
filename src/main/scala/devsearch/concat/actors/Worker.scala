@@ -8,7 +8,7 @@ import devsearch.concat.Utils
 import devsearch.concat.actors.Coordinator._
 import devsearch.concat.actors.Worker._
 import org.apache.commons.compress.archivers.{ArchiveOutputStream, ArchiveStreamFactory}
-import org.apache.commons.compress.archivers.tar.TarArchiveEntry
+import org.apache.commons.compress.archivers.tar.{TarArchiveEntry, TarArchiveOutputStream}
 import org.apache.commons.compress.compressors.{CompressorOutputStream, CompressorStreamFactory}
 import org.apache.commons.compress.utils.IOUtils
 
@@ -21,7 +21,7 @@ import org.apache.commons.compress.utils.IOUtils
 class Worker(master: ActorRef) extends Actor with ActorLogging {
 
   /* The stream we are currently writing in */
-  var currentStream = Option.empty[ArchiveOutputStream]
+  var currentStream = Option.empty[TarArchiveOutputStream]
   var currentBlob = Option.empty[Path]
 
   /* The number of bytes written so far in the blob*/
@@ -42,7 +42,8 @@ class Worker(master: ActorRef) extends Actor with ActorLogging {
 
       bytesWritten = 0
       val out = new BufferedOutputStream(Files.newOutputStream(file))
-      val tarOut = new ArchiveStreamFactory().createArchiveOutputStream(ArchiveStreamFactory.TAR, out)
+      val tarOut = new ArchiveStreamFactory().createArchiveOutputStream(ArchiveStreamFactory.TAR, out).asInstanceOf[TarArchiveOutputStream]
+      tarOut.setLongFileMode(TarArchiveOutputStream.LONGFILE_GNU)
       currentStream = Some(tarOut)
       master ! RepoRequest
     }
@@ -73,12 +74,12 @@ class Worker(master: ActorRef) extends Actor with ActorLogging {
         }
       }
 
-      val (seen, processed) = sizes.foldLeft((0L, 0L)) { (b, a) => (b._1 + a._1, b._2 + a._2) }
+      val (processed, seen) = sizes.foldLeft((0L, 0L)) { (b, a) => (b._1 + a._1, b._2 + a._2) }
       bytesSeen += seen
       bytesProcessed += processed
 
       bytesWritten += processed
-      if (bytesWritten >= Utils.maxFileSize) {
+      if (bytesWritten >= Utils.blobSize) {
         tarOut.close()
         currentStream = None
         log.info(s"Finished with blob : ${currentBlob.get}")
