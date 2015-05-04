@@ -1,91 +1,80 @@
 package devsearch.concat.actors
 
-import java.io.{File, IOException}
-import java.nio.file.{Files, InvalidPathException}
+import java.nio.file.{Files, InvalidPathException, Path}
 
 import akka.actor.{Actor, ActorLogging, Props}
-import devsearch.concat.actors.Coordinator.{BlobResponse, FileResponse, _}
+import devsearch.concat.Utils
+import devsearch.concat.actors.Coordinator._
 import devsearch.concat.actors.Worker._
-import org.apache.tika.Tika
-import org.apache.tika.detect.TextDetector
 
 /**
  * The coordinator is in charge of listing the files in the input directory and
  * distribute them to the Workers.
  *
- * @param langFolder The input folder where to find source files
+ * @param repoRoot The input folder where to find source files
  * @param outputFolder  The output folder where to output the big blobs
  * @param numWorkers The number of workers that it will have to coordinate
  */
-case class Coordinator(langFolder: File, outputFolder: File, numWorkers: Int) extends Actor with ActorLogging {
+case class Coordinator(repoRoot: Path, outputFolder: Path, numWorkers: Int) extends Actor with ActorLogging {
 
-  var files = Coordinator.listFilesRec(langFolder)
+  import Utils._
+
+  /** The repos we have to process */
+  var repos = getRepoPaths(repoRoot)
   var currentBlobNum = 0
-  var numFinished = 0
-  val blobSize = 640L << 20 // 640 Mb
 
-  /** Text files bigger than 120Mb are probably not source code */
-  val maxSize = 120L << 20 // 120Mb
+  /** Total number of bytes in the root folder */
+  var totalBytesSeen = 0L
+
+  /** Total number of bytes that were added to the blobs */
+  var totalBytesProcesses = 0L
+
+  /** Number of workers that have finished working */
+  var workerFinished = 0L
+
+  log.info(s"Starting up coordinator with $numWorkers worker on root folder : $repoRoot and ouput folder $outputFolder")
 
   def receive = {
     /* Worker is done doing its work */
-    case Finished => {
-      numFinished += 1
-      if (numFinished == numWorkers) {
+    case Finished(bytesSeen, bytesProcessed) =>
+      totalBytesSeen += bytesSeen
+      totalBytesProcesses += bytesProcessed
+      workerFinished += 1
+      if (workerFinished == numWorkers) {
+        log.info(s"Shutting down system! Processed ${totalBytesProcesses}B out of ${totalBytesSeen}B")
         context.system.shutdown()
       }
-    }
 
-    /* Send next file to worker */
-    case FileRequest => files match {
-      case head #:: tail =>
-        files = tail
+    /* Send next repo to worker */
+    case RepoRequest => repos match {
+      case repo #:: tail =>
+        repos = tail
 
-        if(head.length > maxSize) {
-          log.warning(s"Dropping file $head because it is suspiciously large")
+        sender ! RepoResponse(repo, getRelativePath(repo, repoRoot))
 
-          /* Resend request */
-          self.!(FileRequest)(sender)
-        } else {
-          sender ! FileResponse(head, Coordinator.getRelativePath(head, langFolder))
-        }
       /* If there are no more files, shutdown workers */
       case _ => sender ! Shutdown
     }
 
     /* Send next available blob to worker */
-    case BlobRequest => {
+    case BlobRequest =>
       currentBlobNum += 1
       val blobName = "part-%05d.tar".format(currentBlobNum)
-      sender ! BlobResponse(new File(outputFolder, blobName), blobSize)
-    }
+      sender ! BlobResponse(Files.createFile(outputFolder.resolve(blobName)))
+
   }
 }
 
 object Coordinator {
-  def props(langFolder: File, outputFolder: File, numWorkers: Int) =
+  def props(langFolder: Path, outputFolder: Path, numWorkers: Int) =
     Props(new Coordinator(langFolder, outputFolder, numWorkers))
 
-  case class FileResponse(file: File, relativeParentPath : String)
+  case class RepoResponse(file: Path, relativeParentPath: String)
 
-  case class BlobResponse(file: File, blobSize: Long)
+  case class BlobResponse(file: Path)
 
   case object Shutdown
 
-  /**
-   * Checks whether a file is a text file.
-   *
-   * @param file The file to check
-   * @return true if file is a text file
-   */
-  def isTextFile(file: File): Boolean = try {
-    val contentType = Option(new Tika(new TextDetector()).detect(file))
-    contentType.map(_.contains("text")).getOrElse(false)
-  } catch {
-    case o : IOException =>
-      Console.err.println(s"Can't open $file to check that!")
-      false
-  }
 
   /**
    * Defines what is a good file, that is one that we want to include in our bigger files
@@ -93,38 +82,19 @@ object Coordinator {
    * @param file The file that we want to test
    * @return true if file is a text file not hidden and not a link
    */
-  def isGoodFile(file: File): Boolean = try {
-    lazy val hidden = file.isHidden
-    lazy val link = Files.isSymbolicLink(file.toPath)
-    lazy val text = isTextFile(file)
-    !hidden && !link && (file.isDirectory || text)
+  def isGoodFile(file: Path): Boolean = try {
+    lazy val hidden = Files.isHidden(file)
+    lazy val link = Files.isSymbolicLink(file)
+    lazy val text = Utils.isTextFile(file)
+    !hidden && !link && (Files.isDirectory(file) || text)
   } catch {
-    case e : InvalidPathException =>
+    case e: InvalidPathException =>
       Console.err.println(s"Can't convert $file to path, malformed input or invalid characters!")
       false
   }
 
-  /** List all the files in a repository recursively
-    *
-    * @param repo The repository folder
-    *
-    */
-  def listFilesRec(repo: File): Stream[File] = {
 
-    def recScan(toScan: Stream[File]): Stream[File] = toScan match {
-      case f #:: fs =>
-        val children = f.listFiles.toSeq.filter(isGoodFile)
-        val (folders, files) = children.partition(_.isDirectory)
-        files.toStream #::: recScan(folders.toStream #::: fs)
-      case _ => Stream.empty[File]
-    }
-
-    recScan(Stream(repo))
-  }
-
-
-  def getRelativePath(file : File, langFolder: File): String = {
-    val rootFolder = langFolder.getParentFile
-    rootFolder.toURI.relativize(file.toURI).getPath
+  def getRelativePath(file: Path, repoRoot: Path): String = {
+    repoRoot.relativize(file).toString
   }
 }
