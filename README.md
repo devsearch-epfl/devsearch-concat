@@ -1,7 +1,7 @@
-ParallelConcat
-==============
+devsearch-concat
+================
 
-Concatenate source files in parallel from the DevMine source repositories
+Concatenate source files from the DevMine source repositories
 
 Build & Run
 -----------
