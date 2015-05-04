@@ -13,7 +13,7 @@ libraryDependencies ++= Seq(
   "com.github.scopt" %% "scopt" % "3.3.0",
   "org.apache.tika" % "tika-core" % "1.7",
   "de.sven-jacobs" % "loremipsum" % "1.0",
-  "org.kamranzafar" % "jtar" % "2.2"
+  "org.apache.commons" % "commons-compress" % "1.9"
 )
 
 resolvers += Resolver.sonatypeRepo("public")
