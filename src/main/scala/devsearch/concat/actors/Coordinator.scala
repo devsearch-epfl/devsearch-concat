@@ -1,13 +1,13 @@
-package actors
+package devsearch.concat.actors
 
-import java.io.{IOException, File}
-import java.nio.file.{InvalidPathException, LinkOption, Files}
+import java.io.{File, IOException}
+import java.nio.file.{Files, InvalidPathException}
 
-import actors.Coordinator.{BlobResponse, FileResponse, Shutdown}
-import actors.Worker.{Finished, FileRequest, BlobRequest}
-import akka.actor.{ActorLogging, Actor, Props}
-import org.apache.tika.detect.TextDetector
+import akka.actor.{Actor, ActorLogging, Props}
+import devsearch.concat.actors.Coordinator.{BlobResponse, FileResponse, _}
+import devsearch.concat.actors.Worker._
 import org.apache.tika.Tika
+import org.apache.tika.detect.TextDetector
 
 /**
  * The coordinator is in charge of listing the files in the input directory and
@@ -47,7 +47,7 @@ case class Coordinator(langFolder: File, outputFolder: File, numWorkers: Int) ex
           /* Resend request */
           self.!(FileRequest)(sender)
         } else {
-          sender ! FileResponse(head)
+          sender ! FileResponse(head, Coordinator.getRelativePath(head, langFolder))
         }
       /* If there are no more files, shutdown workers */
       case _ => sender ! Shutdown
@@ -56,7 +56,7 @@ case class Coordinator(langFolder: File, outputFolder: File, numWorkers: Int) ex
     /* Send next available blob to worker */
     case BlobRequest => {
       currentBlobNum += 1
-      val blobName = "part-%05d".format(currentBlobNum)
+      val blobName = "part-%05d.tar".format(currentBlobNum)
       sender ! BlobResponse(new File(outputFolder, blobName), blobSize)
     }
   }
@@ -66,7 +66,7 @@ object Coordinator {
   def props(langFolder: File, outputFolder: File, numWorkers: Int) =
     Props(new Coordinator(langFolder, outputFolder, numWorkers))
 
-  case class FileResponse(file: File)
+  case class FileResponse(file: File, relativeParentPath : String)
 
   case class BlobResponse(file: File, blobSize: Long)
 
@@ -120,5 +120,11 @@ object Coordinator {
     }
 
     recScan(Stream(repo))
+  }
+
+
+  def getRelativePath(file : File, langFolder: File): String = {
+    val rootFolder = langFolder.getParentFile
+    rootFolder.toURI.relativize(file.toURI).getPath
   }
 }

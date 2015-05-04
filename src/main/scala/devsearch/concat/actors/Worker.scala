@@ -1,12 +1,11 @@
-package actors
+package devsearch.concat.actors
 
 import java.io._
 
-import actors.Coordinator.{FileResponse, BlobResponse, Shutdown}
-import actors.Worker.{Finished, FileRequest, Begin, BlobRequest}
-import akka.actor.{ActorRef, Actor, ActorLogging, Props}
-
-import scala.concurrent.Future
+import akka.actor.{Actor, ActorLogging, ActorRef, Props}
+import devsearch.concat.actors.Coordinator.{BlobResponse, FileResponse, Shutdown}
+import devsearch.concat.actors.Worker.{Begin, BlobRequest, FileRequest, Finished}
+import org.kamranzafar.jtar.{TarEntry, TarOutputStream}
 
 /**
  * The worker actor is the one in charge of creating the large
@@ -17,7 +16,7 @@ import scala.concurrent.Future
 class Worker(master: ActorRef) extends Actor with ActorLogging {
 
   /* The stream we are currently writing in */
-  var currentStream = Option.empty[DataOutputStream]
+  var currentStream = Option.empty[TarOutputStream]
   var currentBlob = Option.empty[File]
 
   /* The maximum number of bytes we are allowed to write to the stream */
@@ -26,7 +25,7 @@ class Worker(master: ActorRef) extends Actor with ActorLogging {
   var bytesWritten = 0L
 
   /* Temporary file we have not written yet */
-  var tempFile = Option.empty[File]
+  var tempFile = Option.empty[FileResponse]
 
   def receive = {
     /* Start to work */
@@ -40,20 +39,18 @@ class Worker(master: ActorRef) extends Actor with ActorLogging {
       currentBlob = Some(file)
       maxSize = size
       bytesWritten = 0
-      currentStream = Some(new DataOutputStream(new FileOutputStream(file)))
-      tempFile.map(self ! FileResponse(_)).getOrElse(master ! FileRequest)
+      currentStream = Some(new TarOutputStream(new DataOutputStream(new FileOutputStream(file))))
+      tempFile.map(self ! _).getOrElse(master ! FileRequest)
     }
 
     /* One single file to append to the current blob */
-    case FileResponse(file) => {
+    case fr @ FileResponse(file, relativePath) => {
       val fileSize = file.length()
-      val header = s"$fileSize:$file\n".getBytes("UTF-8")
-      val separator = "\n".getBytes("UTF-8")
-      val bytesToWrite = header.length + fileSize + separator.length
 
-      if (bytesToWrite + bytesWritten > maxSize) {
+
+      if (fileSize + bytesWritten > maxSize) {
         /* The blob is full */
-        tempFile = Some(file)
+        tempFile = Some(fr)
         currentStream.foreach {
           _.close
         }
@@ -63,15 +60,14 @@ class Worker(master: ActorRef) extends Actor with ActorLogging {
         master ! BlobRequest
       } else {
         /* Append the current file */
-        bytesWritten += bytesToWrite
+        bytesWritten += fileSize
         tempFile = None
         assert(currentStream.isDefined)
         currentStream.foreach { dos =>
-          dos.write(header)
+          dos.putNextEntry(new TarEntry(file, relativePath));
           val is = new FileInputStream(file)
           Worker.copyBytes(is, dos)
           is.close()
-          dos.write(separator)
         }
         master ! FileRequest
       }
