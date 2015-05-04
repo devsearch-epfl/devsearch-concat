@@ -121,11 +121,7 @@ object Utils {
       var results = Seq.empty[T]
       while (entry != null) {
         /* Since the tarInput does not support marking, we have to cheat */
-        lazy val is = {
-          val content = new Array[Byte](entry.getSize.toInt)
-          IOUtils.readFully(tarInput, content)
-          new ByteArrayInputStream(content)
-        }
+        lazy val is = new BufferedInputStream(tarInput)
         val fileEntry = new FileEntry {
           override def size: Long = entry.getSize
 

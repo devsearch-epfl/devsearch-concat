@@ -1,6 +1,6 @@
 package devsearch.concat
 
-import java.nio.file.{Files, Paths}
+import java.nio.file.{Path, Files, Paths}
 import java.util.concurrent.Executors
 
 import akka.actor.ActorSystem
@@ -13,6 +13,29 @@ import scala.concurrent.ExecutionContext
 object Main {
 
   case class Config(repoRoot: String = "", outputFolder: String = "", parallelism: Int = 4)
+
+  def concat(repoRoot : Path, outputFolder: Path, parallelism : Int) : Unit = {
+    val numWorkers = parallelism
+    val threadPool = Executors.newFixedThreadPool(numWorkers)
+    val executionContext = ExecutionContext.fromExecutor(threadPool)
+
+    /* Create new actor system */
+    val system = ActorSystem(s"devsearch-concat", defaultExecutionContext = Some(executionContext))
+
+    /* Initiate devsearch.concat.actors */
+    val master = system.actorOf(Coordinator.props(repoRoot, outputFolder, numWorkers))
+    val workers = Vector.fill(numWorkers)(system.actorOf(Worker.props(master)))
+
+    /* Start working */
+    workers.foreach {
+      _ ! Begin
+    }
+
+    /* Wait for termination */
+    system.awaitTermination()
+
+    threadPool.shutdown()
+  }
 
   def main(args: Array[String]) {
     import Files._
@@ -38,30 +61,12 @@ object Main {
 
     if (!outputFolder.toFile.list.isEmpty) fail("Output folder is not empty")
 
-    val numWorkers = conf.parallelism
-    val threadPool = Executors.newFixedThreadPool(numWorkers)
-    val executionContext = ExecutionContext.fromExecutor(threadPool)
 
     repoRoot.toFile.listFiles.filterNot(_.isDirectory).foreach { file =>
       fail(s"Found $file in the repository root which is not a directory!")
     }
 
-    /* Create new actor system */
-    val system = ActorSystem(s"devsearch-concat", defaultExecutionContext = Some(executionContext))
-
-    /* Initiate devsearch.concat.actors */
-    val master = system.actorOf(Coordinator.props(repoRoot, outputFolder, numWorkers))
-    val workers = Vector.fill(numWorkers)(system.actorOf(Worker.props(master)))
-
-    /* Start working */
-    workers.foreach {
-      _ ! Begin
-    }
-
-    /* Wait for termination */
-    system.awaitTermination()
-
-    threadPool.shutdown()
+    concat(repoRoot, outputFolder, conf.parallelism)
   }
 }
 
