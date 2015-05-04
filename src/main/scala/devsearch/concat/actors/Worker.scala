@@ -54,14 +54,14 @@ class Worker(master: ActorRef) extends Actor with ActorLogging {
       val tarOut = currentStream.get
 
       val sizes = Utils.walkFiles(file) { fileEntry =>
-        val isNormalFile = !fileEntry.isDirectory && !fileEntry.isSymbolicLink
-        val isReasonableSize = fileEntry.size < Utils.maxFileSize
-
-        /** This lazy is important because is TextFile might read the whole file in memory */
-        lazy val isTextFile = Utils.isTextFile(fileEntry.inputStream)
         val size = fileEntry.size
 
-        if (isNormalFile && isReasonableSize && isTextFile) {
+        val isReasonableSize = size < Utils.maxFileSize
+        /** This lazy is important because is TextFile might read the whole file in memory */
+        lazy val isTextFile = Utils.isTextFile(fileEntry.inputStream)
+
+
+        if (isReasonableSize && isTextFile) {
           val entry = new TarArchiveEntry(Paths.get(correctedPath, fileEntry.relativePath).toString)
           entry.setSize(size)
           tarOut.putArchiveEntry(entry)

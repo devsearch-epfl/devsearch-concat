@@ -60,9 +60,8 @@ class SystemSpec extends WordSpecLike with Matchers {
 
 
       /* Create tar */
-      val command = Seq("tar", "-cf", "repo.tar") ++ repo.toFile.listFiles.map(_.getName)
-      Process(command, cwd = Some(repo.toFile)).!
-      Files.move(repo.resolve("repo.tar"), ownerDir.resolve("repo.tar"))
+      val command = Seq("tar", "-cf", "repo.tar", repo.getFileName.toString)
+      Process(command, cwd = Some(ownerDir.toFile)).!
 
       println(s"Created tarball : ${ownerDir.resolve("repo.tar")}")
 

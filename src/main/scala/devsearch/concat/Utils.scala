@@ -1,7 +1,7 @@
 package devsearch.concat
 
 import java.io._
-import java.nio.file.{Files, Path}
+import java.nio.file.{Paths, Files, Path}
 
 import org.apache.commons.compress.archivers.ArchiveStreamFactory
 import org.apache.commons.compress.archivers.tar.{TarArchiveInputStream, TarArchiveEntry}
@@ -57,7 +57,8 @@ object Utils {
     def recScan(toScan: Stream[Path]): Stream[Path] = toScan match {
       case f #:: fs =>
         val children = f.toFile.listFiles.toSeq.map(_.toPath)
-        val (folders, files) = children.partition(Files.isDirectory(_))
+        val goodFiles = children.filterNot(p => Files.isHidden(p) || Files.isSymbolicLink(p))
+        val (folders, files) = goodFiles.partition(Files.isDirectory(_))
         files.toStream #::: recScan(folders.toStream #::: fs)
       case _ => Stream.empty[Path]
     }
@@ -94,10 +95,6 @@ object Utils {
     def inputStream: InputStream
 
     def size: Long
-
-    def isSymbolicLink: Boolean
-
-    def isDirectory: Boolean
   }
 
   /** Whether the repo is a directory or has been put in a tar ball */
@@ -108,10 +105,6 @@ object Utils {
         lazy val is = new BufferedInputStream(Files.newInputStream(p))
         val entry = new FileEntry {
           override def size: Long = Files.size(p)
-
-          override def isDirectory: Boolean = Files.isDirectory(p)
-
-          override def isSymbolicLink: Boolean = Files.isSymbolicLink(p)
 
           override def relativePath: String = repo.relativize(p).toString
 
@@ -136,16 +129,17 @@ object Utils {
         val fileEntry = new FileEntry {
           override def size: Long = entry.getSize
 
-          override def relativePath: String = entry.getName
-
-          override def isDirectory: Boolean = entry.isDirectory
-
-          override def isSymbolicLink: Boolean = entry.isSymbolicLink
+          override def relativePath: String = entry.getName.dropWhile(_ != '/').tail
 
           override def inputStream: InputStream = is
         }
-        val res = processEntry(fileEntry)
-        results = results :+ res
+        /** Filter symbolic files and directories and hidden files */
+        val isHidden = scala.collection.JavaConversions.asScalaIterator(Paths.get(fileEntry.relativePath).iterator).exists(_.toString.startsWith("."))
+        if (!entry.isSymbolicLink && !entry.isDirectory && !isHidden) {
+          val res = processEntry(fileEntry)
+          results = results :+ res
+        }
+
         entry = tarInput.getNextTarEntry
       }
       tarInput.close()
