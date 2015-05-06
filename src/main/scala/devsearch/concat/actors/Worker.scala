@@ -55,23 +55,29 @@ class Worker(master: ActorRef) extends Actor with ActorLogging {
       val tarOut = currentStream.get
 
       val sizes = Utils.walkFiles(file) { fileEntry =>
-        val size = fileEntry.size
+       try{
+         val size = fileEntry.size
 
-        val isReasonableSize = size < Utils.maxFileSize
-        /** This lazy is important because is TextFile might read the whole file in memory */
-        lazy val isTextFile = Utils.isTextFile(fileEntry.inputStream)
+         val isReasonableSize = size < Utils.maxFileSize
+         /** This lazy is important because is TextFile might read the whole file in memory */
+         lazy val isTextFile = Utils.isTextFile(fileEntry.inputStream)
 
 
-        if (isReasonableSize && isTextFile) {
-          val entry = new TarArchiveEntry(Paths.get(correctedPath, fileEntry.relativePath).toString)
-          entry.setSize(size)
-          tarOut.putArchiveEntry(entry)
-          IOUtils.copy(fileEntry.inputStream, tarOut)
-          tarOut.closeArchiveEntry()
-          (size, size)
-        } else {
-          (0L, size)
-        }
+         if (isReasonableSize && isTextFile) {
+           val entry = new TarArchiveEntry(Paths.get(correctedPath, fileEntry.relativePath).toString)
+           entry.setSize(size)
+           tarOut.putArchiveEntry(entry)
+           IOUtils.copy(fileEntry.inputStream, tarOut)
+           tarOut.closeArchiveEntry()
+           (size, size)
+         } else {
+           (0L, size)
+         }
+       } catch {
+         case e: IOException =>
+           log.error(e, s"Encountered error when processing ${fileEntry.relativePath} for repo ${relativePath}")
+           (0L, 0L)
+       }
       }
 
       val (processed, seen) = sizes.foldLeft((0L, 0L)) { (b, a) => (b._1 + a._1, b._2 + a._2) }

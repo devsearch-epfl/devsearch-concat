@@ -92,8 +92,10 @@ object Utils {
   trait FileEntry {
     def relativePath: String
 
+    @throws[IOException]
     def inputStream: InputStream
 
+    @throws[IOException]
     def size: Long
   }
 
@@ -104,14 +106,21 @@ object Utils {
 
         lazy val is = new BufferedInputStream(Files.newInputStream(p))
         val entry = new FileEntry {
+
           override def size: Long = Files.size(p)
 
           override def relativePath: String = repo.relativize(p).toString
 
           override def inputStream: InputStream = is
         }
+
         val res = processEntry(entry)
-        is.close()
+        try {
+          is.close()
+        } catch {
+          case e: IOException => err.println(s"Could not")
+        }
+
         res
       }
     } else if (repo.toString.endsWith(".tar")) {
