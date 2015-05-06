@@ -118,7 +118,7 @@ object Utils {
         try {
           is.close()
         } catch {
-          case e: IOException => err.println(s"Could not")
+          case e: IOException => err.println(s"Could not close stream for entry $p")
         }
 
         res
