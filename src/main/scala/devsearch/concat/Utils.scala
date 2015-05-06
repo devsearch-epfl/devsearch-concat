@@ -104,12 +104,12 @@ object Utils {
     if (Files.isDirectory(repo)) {
       listFilesRec(repo).map { p =>
 
-        val tryProcess = Try(Files.size(p)).map { size =>
+        val tryProcess = Try(Files.size(p)).map { fileSize =>
 
           lazy val is = new BufferedInputStream(Files.newInputStream(p))
           val entry = new FileEntry {
 
-            override def size: Long = size
+            override def size: Long = fileSize
 
             override def relativePath: String = repo.relativize(p).toString
 
