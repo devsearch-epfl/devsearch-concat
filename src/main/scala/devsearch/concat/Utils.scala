@@ -5,9 +5,10 @@ import java.nio.file.{Paths, Files, Path}
 
 import org.apache.commons.compress.archivers.ArchiveStreamFactory
 import org.apache.commons.compress.archivers.tar.{TarArchiveInputStream, TarArchiveEntry}
-import org.apache.commons.compress.utils.IOUtils
 import org.apache.tika.Tika
 import org.apache.tika.detect.TextDetector
+
+import scala.util.{Try, Success}
 
 /**
  * Created by dengels on 04/05/15.
@@ -95,7 +96,6 @@ object Utils {
     @throws[IOException]
     def inputStream: InputStream
 
-    @throws[IOException]
     def size: Long
   }
 
@@ -104,25 +104,31 @@ object Utils {
     if (Files.isDirectory(repo)) {
       listFilesRec(repo).map { p =>
 
-        lazy val is = new BufferedInputStream(Files.newInputStream(p))
-        val entry = new FileEntry {
+        val tryProcess = Try(Files.size(p)).map { size =>
 
-          override def size: Long = Files.size(p)
+          lazy val is = new BufferedInputStream(Files.newInputStream(p))
+          val entry = new FileEntry {
 
-          override def relativePath: String = repo.relativize(p).toString
+            override def size: Long = size
 
-          override def inputStream: InputStream = is
+            override def relativePath: String = repo.relativize(p).toString
+
+            override def inputStream: InputStream = is
+          }
+
+          val res = processEntry(entry)
+          try {
+            is.close()
+          } catch {
+            case e: IOException => err.println(s"Could not close stream for entry $p")
+          }
+          res
         }
 
-        val res = processEntry(entry)
-        try {
-          is.close()
-        } catch {
-          case e: IOException => err.println(s"Could not close stream for entry $p")
-        }
+        tryProcess.recover { case e: Throwable => err.println(s"Could not process $p : ${e.getMessage}") }
 
-        res
-      }
+        tryProcess
+      }.collect { case Success(value) => value }
     } else if (repo.toString.endsWith(".tar")) {
       val is = new BufferedInputStream(Files.newInputStream(repo))
       val tarInput = new ArchiveStreamFactory().createArchiveInputStream(ArchiveStreamFactory.TAR, is).asInstanceOf[TarArchiveInputStream]

@@ -40,7 +40,7 @@ object Main {
   def main(args: Array[String]) {
     import Files._
 
-    val parser: OptionParser[Config] = new OptionParser[Config]("ParallelConcat") {
+    val parser: OptionParser[Config] = new OptionParser[Config]("devsearch-concat") {
       opt[Int]('j', "jobs").text("Maximum number of jobs to run").action((j, c) => c.copy(parallelism = j))
       arg[String]("<REPO_ROOT>").text("Repository root").action((repo, c) => c.copy(repoRoot = repo))
       arg[String]("<OUTPUT_FOLDER>").text("Output folder for big files").action((out, c) => c.copy(outputFolder = out))
