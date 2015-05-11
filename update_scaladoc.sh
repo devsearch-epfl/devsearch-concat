@@ -7,8 +7,12 @@ DOC_FOLDER=api/
 
 if [ "$TRAVIS_REPO_SLUG" == "devsearch-epfl/$REPO" ] && [ "$TRAVIS_JDK_VERSION" == "oraclejdk8" ] && [ "$TRAVIS_PULL_REQUEST" == "false" ] && [ "$TRAVIS_BRANCH" == "master" ]; then
     
+    # Setup travis info 
+    git config --global user.email "travis@travis-ci.org"
+    git config --global user.name "travis-ci"
+
     # Clone documentation repository 
-    git clone https://github.com/devsearch-epfl/devsearch-doc.git
+    git clone --quiet --branch=gh-pages https://${GH_TOKEN}@github.com/devsearch-epfl/devsearch-doc
      
     # Clear and make new dir
     TARGET_FOLDER=devsearch-doc/$REPO/scaladoc/
