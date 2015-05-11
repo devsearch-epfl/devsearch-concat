@@ -27,7 +27,7 @@ if [ "$TRAVIS_REPO_SLUG" == "devsearch-epfl/$REPO" ] && [ "$TRAVIS_JDK_VERSION" 
     
     # Mark for add and commit
     git add $REPO/scaladoc/*
-    git commit -m "Updating scaladoc for $REPO at commit $TRAVIS_COMMIT"
+    git commit -m "Updating scaladoc for $REPO at commit $TRAVIS_COMMIT (travis build $TRAVIS_BUILD_NUMBER)"
     git push origin gh-pages
     
     # Clean up documentaion repo

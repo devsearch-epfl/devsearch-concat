@@ -10,6 +10,9 @@ import scopt.OptionParser
 
 import scala.concurrent.ExecutionContext
 
+/**
+  * Main object of concat project
+  */
 object Main {
 
   case class Config(repoRoot: String = "", outputFolder: String = "", parallelism: Int = 4)
