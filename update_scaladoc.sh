@@ -3,7 +3,7 @@
 set -x
 
 REPO="devsearch-concat"
-DOC_FOLDER=api/
+DOC_FOLDER="api"
 
 if [ "$TRAVIS_REPO_SLUG" == "devsearch-epfl/$REPO" ] && [ "$TRAVIS_JDK_VERSION" == "oraclejdk8" ] && [ "$TRAVIS_PULL_REQUEST" == "false" ] && [ "$TRAVIS_BRANCH" == "master" ]; then
     
@@ -27,7 +27,7 @@ if [ "$TRAVIS_REPO_SLUG" == "devsearch-epfl/$REPO" ] && [ "$TRAVIS_JDK_VERSION" 
     
     # Mark for add and commit
     git add $REPO/scaladoc/*
-    git commit -m "Updating scaladoc for $REPO at commit $TRAVIS_COMMIT (travis build $TRAVIS_BUILD_NUMBER)"
+    git commit -m "Travis #$TRAVIS_BUILD_NUMBER: Scaladoc for $REPO at commit $TRAVIS_COMMIT"
     git push origin gh-pages
     
     # Clean up documentaion repo
