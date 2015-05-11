@@ -18,3 +18,4 @@ libraryDependencies ++= Seq(
 
 resolvers += Resolver.sonatypeRepo("public")
 
+target in Compile in doc := baseDirectory.value / "api"

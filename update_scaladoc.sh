@@ -1,29 +1,34 @@
+#!/usr/bin/env bash
 
-# get current scaladoc dir
-path=${PWD}
-folder=${path##*/}
-scaladoc=${path}/target/scala-2.10/api/
+set -x
 
-# clone repo
-git clone https://github.com/devsearch-epfl/devsearch-doc.git
+REPO="devsearch-concat"
+DOC_FOLDER=api/
 
-
-# clean and make new dir
-scaladocdir=${PWD}/devsearch-doc/${folder}/scaladoc/
-rm -rf ${scaladocdir}
-mkdir -p ${scaladocdir}
-
-# copy scaladoc over
-cp -rv ${scaladoc}/* ${scaladocdir}
-
-# step into repo
-cd devsearch-doc/
-
-# mark for add and commit
-git add ${folder}/scaladoc/*
-git commit -m "Updating scaladoc for ${folder}"
-git push origin gh-pages
-
-# clean up bdg repo
-cd ..
-rm -rf devsearch-doc/
+if [ "$TRAVIS_REPO_SLUG" == "devsearch-epfl/$REPO" ] && [ "$TRAVIS_JDK_VERSION" == "oraclejdk8" ] && [ "$TRAVIS_PULL_REQUEST" == "false" ] && [ "$TRAVIS_BRANCH" == "master" ]; then
+    
+    # Clone documentation repository 
+    git clone https://github.com/devsearch-epfl/devsearch-doc.git
+     
+    # Clear and make new dir
+    TARGET_FOLDER=devsearch-doc/$REPO/scaladoc/
+    rm -rf $TARGET_FOLDER
+    mkdir -p $TARGET_FOLDER
+    
+    # Copy scaladoc over
+    cp -rv $DOC_FOLDER/* $TARGET_FOLDER
+    
+    # Step into repo
+    cd devsearch-doc/
+    
+    # Mark for add and commit
+    git add $REPO/scaladoc/*
+    git commit -m "Updating scaladoc for $REPO at commit $TRAVIS_COMMIT"
+    git push origin gh-pages
+    
+    # Clean up documentaion repo
+    cd ..
+    rm -rf devsearch-doc/
+else
+    echo "Conditions not met to update scaladoc"
+fi
