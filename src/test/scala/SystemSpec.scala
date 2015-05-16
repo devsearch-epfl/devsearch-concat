@@ -1,8 +1,8 @@
 import java.nio.file.Files
 
 import de.svenjacobs.loremipsum.LoremIpsum
-import devsearch.concat.{Main, Utils}
-import org.scalatest.{Matchers, WordSpecLike}
+import devsearch.concat.{ Main, Utils }
+import org.scalatest.{ Matchers, WordSpecLike }
 
 import scala.sys.process._
 
@@ -42,7 +42,6 @@ class SystemSpec extends WordSpecLike with Matchers {
 
     }
 
-
     "Be able to read tarball repos" in {
 
       val loremIpsum = new LoremIpsum()
@@ -57,7 +56,6 @@ class SystemSpec extends WordSpecLike with Matchers {
       }
 
       val totalSize = files.map { file => Files.size(file) }.sum
-
 
       /* Create tar */
       val command = Seq("tar", "-cf", "repo.tar", repo.getFileName.toString)
@@ -81,7 +79,6 @@ class SystemSpec extends WordSpecLike with Matchers {
       resSize should be > totalSize
 
     }
-
 
   }
 }
