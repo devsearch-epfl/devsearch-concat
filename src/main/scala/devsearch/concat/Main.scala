@@ -25,7 +25,7 @@ object Main {
     val executionContext = ExecutionContext.fromExecutor(threadPool)
 
     /* Create new actor system */
-    val system = ActorSystem(s"devsearch-concat", defaultExecutionContext = Some(executionContext))
+    val system = ActorSystem("devsearch-concat", defaultExecutionContext = Some(executionContext))
 
     /* Initiate devsearch.concat.actors */
     val master = system.actorOf(Coordinator.props(repoRoot, outputFolder, numWorkers))

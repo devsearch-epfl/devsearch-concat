@@ -34,7 +34,7 @@ object Utils {
     contentType.exists(_.contains("text"))
   } catch {
     case o: IOException =>
-      err.println(s"Input Stream could not be read to ")
+      err.println("Input Stream could not be read to check if file is text")
       false
   }
 
@@ -133,7 +133,7 @@ object Utils {
       val tarInput = new ArchiveStreamFactory().createArchiveInputStream(ArchiveStreamFactory.TAR, is).asInstanceOf[TarArchiveInputStream]
       var entry: TarArchiveEntry = tarInput.getNextTarEntry
       var results = Seq.empty[T]
-      while (entry != null) {
+      while (Option(entry).isDefined) {
         /* Since the tarInput does not support marking, we have to cheat */
         lazy val is = new BufferedInputStream(tarInput)
         val fileEntry = new FileEntry {
