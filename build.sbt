@@ -1,3 +1,5 @@
+import scalariform.formatter.preferences._
+
 name := """devsearch-concat"""
 
 shellPrompt := { state => "[\033[36m" + name.value + "\033[0m] $ " }
@@ -18,4 +20,25 @@ libraryDependencies ++= Seq(
 
 resolvers += Resolver.sonatypeRepo("public")
 
-target in Compile in doc := baseDirectory.value / "api"
+target in Compile in doc := (baseDirectory.value / "api")
+
+scalariformSettings
+
+ScalariformKeys.preferences := ScalariformKeys.preferences.value
+    .setPreference(AlignParameters, true)
+    .setPreference(AlignSingleLineCaseStatements, false)
+    .setPreference(CompactControlReadability, false)
+    .setPreference(CompactStringConcatenation, false)
+    .setPreference(DoubleIndentClassDeclaration, true)
+    .setPreference(FormatXml, true)
+    .setPreference(IndentLocalDefs, false)
+    .setPreference(IndentPackageBlocks, true)
+    .setPreference(IndentSpaces, 2)
+    .setPreference(IndentWithTabs, false)
+    .setPreference(MultilineScaladocCommentsStartOnFirstLine, false)
+    .setPreference(PreserveDanglingCloseParenthesis, false)
+    .setPreference(RewriteArrowSymbols, false)
+    .setPreference(SpaceBeforeColon, false)
+    .setPreference(SpaceInsideBrackets, false)
+    .setPreference(SpaceInsideParentheses, false)
+    .setPreference(SpacesWithinPatternBinders, true)

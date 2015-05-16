@@ -31,7 +31,7 @@ class Worker(master: ActorRef) extends Actor with ActorLogging {
   var bytesSeen = 0L
   var bytesProcessed = 0L
 
-  def receive = {
+  override def receive : PartialFunction[Any, Unit] = {
     /* Start to work */
     case Begin => master ! BlobRequest
 
@@ -109,7 +109,7 @@ class Worker(master: ActorRef) extends Actor with ActorLogging {
 }
 
 object Worker {
-  def props(reader: ActorRef) = Props(new Worker(reader))
+  def props(reader: ActorRef) : Props = Props(new Worker(reader))
 
   case object RepoRequest
 

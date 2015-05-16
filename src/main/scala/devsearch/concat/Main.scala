@@ -15,7 +15,9 @@ import scala.concurrent.ExecutionContext
   */
 object Main {
 
-  case class Config(repoRoot: String = "", outputFolder: String = "", parallelism: Int = 4)
+  val DEFAULT_PARALLELISM = 4
+
+  case class Config(repoRoot: String = "", outputFolder: String = "", parallelism: Int = DEFAULT_PARALLELISM)
 
   def concat(repoRoot : Path, outputFolder: Path, parallelism : Int) : Unit = {
     val numWorkers = parallelism

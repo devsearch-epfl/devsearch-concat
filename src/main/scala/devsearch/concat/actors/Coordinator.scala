@@ -34,7 +34,7 @@ case class Coordinator(repoRoot: Path, outputFolder: Path, numWorkers: Int) exte
 
   log.info(s"Starting up coordinator with $numWorkers worker on root folder : $repoRoot and ouput folder $outputFolder")
 
-  def receive = {
+  override def receive : PartialFunction[Any, Unit] = {
     /* Worker is done doing its work */
     case Finished(bytesSeen, bytesProcessed) =>
       totalBytesSeen += bytesSeen
@@ -66,7 +66,7 @@ case class Coordinator(repoRoot: Path, outputFolder: Path, numWorkers: Int) exte
 }
 
 object Coordinator {
-  def props(langFolder: Path, outputFolder: Path, numWorkers: Int) =
+  def props(langFolder: Path, outputFolder: Path, numWorkers: Int) : Props=
     Props(new Coordinator(langFolder, outputFolder, numWorkers))
 
   case class RepoResponse(file: Path, relativeParentPath: String)
