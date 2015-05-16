@@ -12,6 +12,8 @@ import scala.collection.JavaConverters._
 import scala.util.{ Failure, Try, Success }
 
 /**
+ * Contains useful functions used by the workers as well as default values
+ *
  * Created by dengels on 04/05/15.
  */
 object Utils {
@@ -102,6 +104,9 @@ object Utils {
     owners.filter(_.isDirectory).flatMap(_.listFiles.toStream.map(_.toPath))
   }
 
+  /**
+   * Generic way of representing a file whether it comes from a tar ball or the regular file system
+   */
   trait FileEntry {
     def relativePath: String
 
