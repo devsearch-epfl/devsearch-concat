@@ -30,7 +30,7 @@ case class Coordinator(repoRoot: Path, outputFolder: Path, numWorkers: Int) exte
   var totalBytesProcesses = 0L
 
   /** Number of workers that have finished working */
-  var workerFinished = 0L
+  var workerFinished = 0
 
   log.info(s"Starting up coordinator with $numWorkers worker on root folder : $repoRoot and ouput folder $outputFolder")
 
