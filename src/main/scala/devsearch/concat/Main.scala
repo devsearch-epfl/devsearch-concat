@@ -1,25 +1,25 @@
 package devsearch.concat
 
-import java.nio.file.{Path, Files, Paths}
+import java.nio.file.{ Path, Files, Paths }
 import java.util.concurrent.Executors
 
 import akka.actor.ActorSystem
 import devsearch.concat.actors.Worker.Begin
-import devsearch.concat.actors.{Coordinator, Worker}
+import devsearch.concat.actors.{ Coordinator, Worker }
 import scopt.OptionParser
 
 import scala.concurrent.ExecutionContext
 
 /**
-  * Main object of concat project
-  */
+ * Main object of concat project
+ */
 object Main {
 
   val DEFAULT_PARALLELISM = 4
 
   case class Config(repoRoot: String = "", outputFolder: String = "", parallelism: Int = DEFAULT_PARALLELISM)
 
-  def concat(repoRoot : Path, outputFolder: Path, parallelism : Int) : Unit = {
+  def concat(repoRoot: Path, outputFolder: Path, parallelism: Int): Unit = {
     val numWorkers = parallelism
     val threadPool = Executors.newFixedThreadPool(numWorkers)
     val executionContext = ExecutionContext.fromExecutor(threadPool)
@@ -66,7 +66,6 @@ object Main {
 
     if (!outputFolder.toFile.list.isEmpty) fail("Output folder is not empty")
 
-
     repoRoot.toFile.listFiles.filterNot(_.isDirectory).foreach { file =>
       fail(s"Found $file in the repository root which is not a directory!")
     }
@@ -74,11 +73,4 @@ object Main {
     concat(repoRoot, outputFolder, conf.parallelism)
   }
 }
-
-
-
-
-
-
-
 

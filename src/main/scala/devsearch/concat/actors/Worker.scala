@@ -1,15 +1,15 @@
 package devsearch.concat.actors
 
 import java.io._
-import java.nio.file.{Paths, Files, Path}
+import java.nio.file.{ Paths, Files, Path }
 
-import akka.actor.{Actor, ActorLogging, ActorRef, Props}
+import akka.actor.{ Actor, ActorLogging, ActorRef, Props }
 import devsearch.concat.Utils
 import devsearch.concat.actors.Coordinator._
 import devsearch.concat.actors.Worker._
-import org.apache.commons.compress.archivers.{ArchiveOutputStream, ArchiveStreamFactory}
-import org.apache.commons.compress.archivers.tar.{TarArchiveEntry, TarArchiveOutputStream}
-import org.apache.commons.compress.compressors.{CompressorOutputStream, CompressorStreamFactory}
+import org.apache.commons.compress.archivers.{ ArchiveOutputStream, ArchiveStreamFactory }
+import org.apache.commons.compress.archivers.tar.{ TarArchiveEntry, TarArchiveOutputStream }
+import org.apache.commons.compress.compressors.{ CompressorOutputStream, CompressorStreamFactory }
 import org.apache.commons.compress.utils.IOUtils
 
 /**
@@ -31,7 +31,7 @@ class Worker(master: ActorRef) extends Actor with ActorLogging {
   var bytesSeen = 0L
   var bytesProcessed = 0L
 
-  override def receive : PartialFunction[Any, Unit] = {
+  override def receive: PartialFunction[Any, Unit] = {
     /* Start to work */
     case Begin => master ! BlobRequest
 
@@ -55,29 +55,28 @@ class Worker(master: ActorRef) extends Actor with ActorLogging {
       val tarOut = currentStream.get
 
       val sizes = Utils.walkFiles(file) { fileEntry =>
-       try{
-         val size = fileEntry.size
+        try {
+          val size = fileEntry.size
 
-         val isReasonableSize = size < Utils.maxFileSize
-         /** This lazy is important because is TextFile might read the whole file in memory */
-         lazy val isTextFile = Utils.isTextFile(fileEntry.inputStream)
+          val isReasonableSize = size < Utils.maxFileSize
+          /** This lazy is important because is TextFile might read the whole file in memory */
+          lazy val isTextFile = Utils.isTextFile(fileEntry.inputStream)
 
-
-         if (isReasonableSize && isTextFile) {
-           val entry = new TarArchiveEntry(Paths.get(correctedPath, fileEntry.relativePath).toString)
-           entry.setSize(size)
-           tarOut.putArchiveEntry(entry)
-           IOUtils.copy(fileEntry.inputStream, tarOut)
-           tarOut.closeArchiveEntry()
-           (size, size)
-         } else {
-           (0L, size)
-         }
-       } catch {
-         case e: IOException =>
-           log.error(e, s"Encountered error when processing ${fileEntry.relativePath} for repo ${relativePath}")
-           (0L, 0L)
-       }
+          if (isReasonableSize && isTextFile) {
+            val entry = new TarArchiveEntry(Paths.get(correctedPath, fileEntry.relativePath).toString)
+            entry.setSize(size)
+            tarOut.putArchiveEntry(entry)
+            IOUtils.copy(fileEntry.inputStream, tarOut)
+            tarOut.closeArchiveEntry()
+            (size, size)
+          } else {
+            (0L, size)
+          }
+        } catch {
+          case e: IOException =>
+            log.error(e, s"Encountered error when processing ${fileEntry.relativePath} for repo ${relativePath}")
+            (0L, 0L)
+        }
       }
 
       val (processed, seen) = sizes.foldLeft((0L, 0L)) { (b, a) => (b._1 + a._1, b._2 + a._2) }
@@ -95,8 +94,6 @@ class Worker(master: ActorRef) extends Actor with ActorLogging {
         master ! RepoRequest
       }
 
-
-
     /* No more files, end what you are doing and send finished message */
     case Shutdown => {
       currentStream.foreach {
@@ -109,7 +106,7 @@ class Worker(master: ActorRef) extends Actor with ActorLogging {
 }
 
 object Worker {
-  def props(reader: ActorRef) : Props = Props(new Worker(reader))
+  def props(reader: ActorRef): Props = Props(new Worker(reader))
 
   case object RepoRequest
 
@@ -118,6 +115,5 @@ object Worker {
   case object Begin
 
   case class Finished(bytesSeen: Long, bytesProcessed: Long)
-
 
 }

@@ -1,8 +1,8 @@
 package devsearch.concat.actors
 
-import java.nio.file.{Files, InvalidPathException, Path}
+import java.nio.file.{ Files, InvalidPathException, Path }
 
-import akka.actor.{Actor, ActorLogging, Props}
+import akka.actor.{ Actor, ActorLogging, Props }
 import devsearch.concat.Utils
 import devsearch.concat.actors.Coordinator._
 import devsearch.concat.actors.Worker._
@@ -34,7 +34,7 @@ case class Coordinator(repoRoot: Path, outputFolder: Path, numWorkers: Int) exte
 
   log.info(s"Starting up coordinator with $numWorkers worker on root folder : $repoRoot and ouput folder $outputFolder")
 
-  override def receive : PartialFunction[Any, Unit] = {
+  override def receive: PartialFunction[Any, Unit] = {
     /* Worker is done doing its work */
     case Finished(bytesSeen, bytesProcessed) =>
       totalBytesSeen += bytesSeen
@@ -66,7 +66,7 @@ case class Coordinator(repoRoot: Path, outputFolder: Path, numWorkers: Int) exte
 }
 
 object Coordinator {
-  def props(langFolder: Path, outputFolder: Path, numWorkers: Int) : Props=
+  def props(langFolder: Path, outputFolder: Path, numWorkers: Int): Props =
     Props(new Coordinator(langFolder, outputFolder, numWorkers))
 
   case class RepoResponse(file: Path, relativeParentPath: String)
@@ -74,7 +74,6 @@ object Coordinator {
   case class BlobResponse(file: Path)
 
   case object Shutdown
-
 
   /**
    * Defines what is a good file, that is one that we want to include in our bigger files
@@ -92,7 +91,6 @@ object Coordinator {
       Console.err.println(s"Can't convert $file to path, malformed input or invalid characters!")
       false
   }
-
 
   def getRelativePath(file: Path, repoRoot: Path): String = {
     repoRoot.relativize(file).toString

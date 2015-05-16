@@ -1,14 +1,14 @@
 package devsearch.concat
 
 import java.io._
-import java.nio.file.{Paths, Files, Path}
+import java.nio.file.{ Paths, Files, Path }
 
 import org.apache.commons.compress.archivers.ArchiveStreamFactory
-import org.apache.commons.compress.archivers.tar.{TarArchiveInputStream, TarArchiveEntry}
+import org.apache.commons.compress.archivers.tar.{ TarArchiveInputStream, TarArchiveEntry }
 import org.apache.tika.Tika
 import org.apache.tika.detect.TextDetector
 
-import scala.util.{Try, Success}
+import scala.util.{ Try, Success }
 
 /**
  * Created by dengels on 04/05/15.
@@ -22,7 +22,6 @@ object Utils {
 
   /** Text files bigger than 2Mb are probably not source code */
   val maxFileSize = 2L << 20 // 2Mb
-
 
   /**
    * Checks whether a stream contains text data
@@ -67,19 +66,19 @@ object Utils {
     recScan(Stream(folder))
   }
 
-  /** Returns all the repos contained in the repository root
-    *
-    * repos are organized by language, then owner, then reponame
-    *
-    * repos can be either folder, or tarballs
-    */
+  /**
+   * Returns all the repos contained in the repository root
+   *
+   * repos are organized by language, then owner, then reponame
+   *
+   * repos can be either folder, or tarballs
+   */
   def getRepoPaths(repoRoot: Path): Stream[Path] = {
     val languages = repoRoot.toFile.listFiles.toStream
 
     languages.filterNot(_.isDirectory).foreach { file =>
       err.println(s"Found regular file $file when expecting language directory")
     }
-
 
     val owners = languages.filter(_.isDirectory).flatMap(_.listFiles.toStream)
 
