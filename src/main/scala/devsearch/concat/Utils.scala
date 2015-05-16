@@ -7,8 +7,9 @@ import org.apache.commons.compress.archivers.ArchiveStreamFactory
 import org.apache.commons.compress.archivers.tar.{ TarArchiveInputStream, TarArchiveEntry }
 import org.apache.tika.Tika
 import org.apache.tika.detect.TextDetector
+import scala.collection.JavaConverters._
 
-import scala.util.{ Try, Success }
+import scala.util.{ Failure, Try, Success }
 
 /**
  * Created by dengels on 04/05/15.
@@ -17,11 +18,16 @@ object Utils {
 
   import scala.Console._
 
+  /** Default values **/
+
   /** Size of one blob we build */
-  val blobSize = 640L << 20 // 640 Mb
+  val BLOB_SIZE: Long = 640L << 20 // 640 Mb
 
   /** Text files bigger than 2Mb are probably not source code */
-  val maxFileSize = 2L << 20 // 2Mb
+  val MAX_FILE_SIZE: Long = 2L << 20 // 2Mb
+
+  /** Default number of worker nodes */
+  val DEFAULT_PARALLELISM: Int = 4
 
   /**
    * Checks whether a stream contains text data
@@ -57,7 +63,14 @@ object Utils {
     def recScan(toScan: Stream[Path]): Stream[Path] = toScan match {
       case f #:: fs =>
         val children = f.toFile.listFiles.toSeq.map(_.toPath)
-        val goodFiles = children.filterNot(p => Files.isHidden(p) || Files.isSymbolicLink(p))
+        val goodFiles = children.filterNot {
+          p =>
+            try {
+              Files.isHidden(p) || Files.isSymbolicLink(p)
+            } catch {
+              case e: IOException => true
+            }
+        }
         val (folders, files) = goodFiles.partition(Files.isDirectory(_))
         files.toStream #::: recScan(folders.toStream #::: fs)
       case _ => Stream.empty[Path]
@@ -76,11 +89,11 @@ object Utils {
   def getRepoPaths(repoRoot: Path): Stream[Path] = {
     val languages = repoRoot.toFile.listFiles.toStream
 
-    languages.filterNot(_.isDirectory).foreach { file =>
+    languages.filterNot(_.isDirectory).foreach[Unit] { file =>
       err.println(s"Found regular file $file when expecting language directory")
     }
 
-    val owners = languages.filter(_.isDirectory).flatMap(_.listFiles.toStream)
+    val owners = languages.filter(_.isDirectory).flatMap(_.listFiles)
 
     owners.filterNot(_.isDirectory).foreach { file =>
       err.println(s"Found regular file $file when expecting owner directory")
@@ -124,15 +137,25 @@ object Utils {
           res
         }
 
-        tryProcess.recover { case e: Throwable => err.println(s"Could not process $p : ${e.getMessage}") }
+        tryProcess match {
+          case Failure(e) => err.println(s"Could not process $p : ${e.getMessage}")
+          case _ =>
+        }
 
         tryProcess
       }.collect { case Success(value) => value }
     } else if (repo.toString.endsWith(".tar")) {
       val is = new BufferedInputStream(Files.newInputStream(repo))
+
+      @SuppressWarnings(Array("org.brianmckenna.wartremover.warts.AsInstanceOf"))
       val tarInput = new ArchiveStreamFactory().createArchiveInputStream(ArchiveStreamFactory.TAR, is).asInstanceOf[TarArchiveInputStream]
+
+      @SuppressWarnings(Array("org.brianmckenna.wartremover.warts.Var"))
       var entry: TarArchiveEntry = tarInput.getNextTarEntry
+
+      @SuppressWarnings(Array("org.brianmckenna.wartremover.warts.Var"))
       var results = Seq.empty[T]
+
       while (Option(entry).isDefined) {
         /* Since the tarInput does not support marking, we have to cheat */
         lazy val is = new BufferedInputStream(tarInput)
@@ -144,7 +167,7 @@ object Utils {
           override def inputStream: InputStream = is
         }
         /** Filter symbolic files and directories and hidden files */
-        val isHidden = scala.collection.JavaConversions.asScalaIterator(Paths.get(fileEntry.relativePath).iterator).exists(_.toString.startsWith("."))
+        val isHidden = Paths.get(fileEntry.relativePath).iterator.asScala.exists(_.toString.startsWith("."))
         if (!entry.isSymbolicLink && !entry.isDirectory && !isHidden) {
           val res = processEntry(fileEntry)
           results = results :+ res

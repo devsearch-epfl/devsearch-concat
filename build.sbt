@@ -45,3 +45,6 @@ ScalariformKeys.preferences := ScalariformKeys.preferences.value
     .setPreference(SpaceInsideBrackets, false)
     .setPreference(SpaceInsideParentheses, false)
     .setPreference(SpacesWithinPatternBinders, true)
+
+wartremoverErrors ++= Warts.allBut(Wart.DefaultArguments, Wart.Nothing, Wart.FinalCaseClass, Wart.NoNeedForMonad, Wart.Any, Wart.Throw)
+wartremoverWarnings ++= Warts.allBut(Wart.FinalCaseClass, Wart.NoNeedForMonad, Wart.Any, Wart.Throw)

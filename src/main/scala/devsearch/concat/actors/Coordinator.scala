@@ -42,7 +42,7 @@ case class Coordinator(repoRoot: Path, outputFolder: Path, numWorkers: Int) exte
       /* If there are no more files, shutdown workers */
       case _ =>
         sender ! Shutdown
-        context.become(collectWorkers(numWorkers))
+        context.become(collectWorkers(numWorkers, 0, 0))
     }
 
     /* Send next available blob to worker */
@@ -56,7 +56,7 @@ case class Coordinator(repoRoot: Path, outputFolder: Path, numWorkers: Int) exte
   /**
    * The coordinator will wait for all the workers to join before exiting
    */
-  def collectWorkers(numLeft: Int, bytesSeen: Long = 0L, bytesProcessed: Long = 0L): PartialFunction[Any, Unit] = {
+  def collectWorkers(numLeft: Int, bytesSeen: Long, bytesProcessed: Long): PartialFunction[Any, Unit] = {
     /* Worker is done doing its work */
     case Finished(seen, processed) =>
       val totalSeen = bytesSeen + seen

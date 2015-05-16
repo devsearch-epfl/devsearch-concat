@@ -15,9 +15,8 @@ import scala.concurrent.ExecutionContext
  */
 object Main {
 
-  val DEFAULT_PARALLELISM = 4
-
-  case class Config(repoRoot: String = "", outputFolder: String = "", parallelism: Int = DEFAULT_PARALLELISM)
+  @SuppressWarnings(Array("org.brianmckenna.wartremover.warts.DefaultArguments"))
+  case class Config(repoRoot: String = "", outputFolder: String = "", parallelism: Int = Utils.DEFAULT_PARALLELISM)
 
   def concat(repoRoot: Path, outputFolder: Path, parallelism: Int): Unit = {
     val numWorkers = parallelism
@@ -45,6 +44,7 @@ object Main {
   def main(args: Array[String]) {
     import Files._
 
+    @SuppressWarnings(Array("org.brianmckenna.wartremover.warts.NonUnitStatements"))
     val parser: OptionParser[Config] = new OptionParser[Config]("devsearch-concat") {
       opt[Int]('j', "jobs").text("Maximum number of jobs to run").action((j, c) => c.copy(parallelism = j))
       arg[String]("<REPO_ROOT>").text("Repository root").action((repo, c) => c.copy(repoRoot = repo))
@@ -66,7 +66,7 @@ object Main {
 
     if (!outputFolder.toFile.list.isEmpty) fail("Output folder is not empty")
 
-    repoRoot.toFile.listFiles.filterNot(_.isDirectory).foreach { file =>
+    repoRoot.toFile.listFiles.filterNot(_.isDirectory).foreach[Unit] { file =>
       fail(s"Found $file in the repository root which is not a directory!")
     }
 

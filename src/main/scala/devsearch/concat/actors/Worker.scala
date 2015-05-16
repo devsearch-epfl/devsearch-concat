@@ -11,6 +11,7 @@ import org.apache.commons.compress.archivers.{ ArchiveOutputStream, ArchiveStrea
 import org.apache.commons.compress.archivers.tar.{ TarArchiveEntry, TarArchiveOutputStream }
 import org.apache.commons.compress.compressors.{ CompressorOutputStream, CompressorStreamFactory }
 import org.apache.commons.compress.utils.IOUtils
+import org.apache.commons.io.FilenameUtils
 
 /**
  * The worker actor is the one in charge of creating the large
@@ -20,55 +21,58 @@ import org.apache.commons.compress.utils.IOUtils
  */
 class Worker(master: ActorRef) extends Actor with ActorLogging {
 
-  /* The stream we are currently writing in */
-  var currentStream = Option.empty[TarArchiveOutputStream]
-  var currentBlob = Option.empty[Path]
+  case class Stats(totalBytesSeen: Long, totalBytesProcessed: Long) {
+    def add(seen: Long, processed: Long) = Stats(totalBytesSeen + seen, totalBytesProcessed + processed)
+  }
 
-  /* The number of bytes written so far in the blob*/
-  var bytesWritten = 0L
+  object Stats {
+    def empty: Stats = Stats(0, 0)
+  }
 
-  /* The number of bytes we have seen and processed */
-  var bytesSeen = 0L
-  var bytesProcessed = 0L
-
+  /**
+   * Default worker behaviour at startup
+   */
   override def receive: PartialFunction[Any, Unit] = {
     /* Start to work */
-    case Begin => master ! BlobRequest
+    case Begin =>
+      master ! BlobRequest
+      context.become(awaitBlob(Stats.empty))
 
+  }
+
+  def awaitBlob(stats: Stats): PartialFunction[Any, Unit] = {
     /* New blob to be created, it will contain the concatenation of many files */
     case BlobResponse(file) => {
-      assert(currentStream == None)
-      currentBlob = Some(file)
-
-      bytesWritten = 0
       val out = new BufferedOutputStream(Files.newOutputStream(file))
-      val tarOut = new ArchiveStreamFactory().createArchiveOutputStream(ArchiveStreamFactory.TAR, out).asInstanceOf[TarArchiveOutputStream]
-      tarOut.setLongFileMode(TarArchiveOutputStream.LONGFILE_GNU)
-      currentStream = Some(tarOut)
-      master ! RepoRequest
-    }
 
+      @SuppressWarnings(Array("org.brianmckenna.wartremover.warts.AsInstanceOf"))
+      val tarOut: TarArchiveOutputStream = new ArchiveStreamFactory().createArchiveOutputStream(ArchiveStreamFactory.TAR, out).asInstanceOf[TarArchiveOutputStream]
+      tarOut.setLongFileMode(TarArchiveOutputStream.LONGFILE_GNU)
+      master ! RepoRequest
+      context.become(fillBlob(file, tarOut, 0, stats))
+    }
+  }
+
+  def fillBlob(blob: Path, stream: TarArchiveOutputStream, bytesWritten: Long, stats: Stats): PartialFunction[Any, Unit] = {
     /* One single file to append to the current blob */
     case RepoResponse(file, relativePath) =>
-      val correctedPath = if (relativePath.endsWith(".tar")) relativePath.dropRight(4) else relativePath
-      assert(currentStream.isDefined)
-      val tarOut = currentStream.get
+      val correctedPath = FilenameUtils.removeExtension(relativePath)
 
       val sizes = Utils.walkFiles(file) { fileEntry =>
         try {
           val size = fileEntry.size
 
-          val isReasonableSize = size < Utils.maxFileSize
+          val isReasonableSize = size < Utils.MAX_FILE_SIZE
           /** This lazy is important because is TextFile might read the whole file in memory */
           lazy val isTextFile = Utils.isTextFile(fileEntry.inputStream)
 
           if (isReasonableSize && isTextFile) {
             val entry = new TarArchiveEntry(Paths.get(correctedPath, fileEntry.relativePath).toString)
             entry.setSize(size)
-            tarOut.putArchiveEntry(entry)
-            IOUtils.copy(fileEntry.inputStream, tarOut)
-            tarOut.closeArchiveEntry()
-            (size, size)
+            stream.putArchiveEntry(entry)
+            val processed = IOUtils.copy(fileEntry.inputStream, stream)
+            stream.closeArchiveEntry()
+            (processed, size)
           } else {
             (0L, size)
           }
@@ -80,28 +84,26 @@ class Worker(master: ActorRef) extends Actor with ActorLogging {
       }
 
       val (processed, seen) = sizes.foldLeft((0L, 0L)) { (b, a) => (b._1 + a._1, b._2 + a._2) }
-      bytesSeen += seen
-      bytesProcessed += processed
 
-      bytesWritten += processed
-      if (bytesWritten >= Utils.blobSize) {
-        tarOut.close()
-        currentStream = None
-        log.info(s"Finished with blob : ${currentBlob.get}")
-        currentBlob = None
+      val updatedStats = stats.add(seen, processed)
+
+      val totalWritten = bytesWritten + processed
+
+      if (totalWritten >= Utils.BLOB_SIZE) {
+        stream.close()
+        log.info(s"Finished with blob : $blob")
         master ! BlobRequest
+        context.become(awaitBlob(updatedStats))
       } else {
         master ! RepoRequest
+        context.become(fillBlob(blob, stream, totalWritten, updatedStats))
       }
 
     /* No more files, end what you are doing and send finished message */
-    case Shutdown => {
-      currentStream.foreach {
-        _.close()
-      }
-      log.info(s"Closing last blob : ${currentBlob.get}")
-      sender ! Finished(bytesSeen, bytesProcessed)
-    }
+    case Shutdown =>
+      stream.close()
+      log.info(s"Closing last blob : $blob")
+      sender ! Finished(stats.totalBytesSeen, stats.totalBytesProcessed)
   }
 }
 

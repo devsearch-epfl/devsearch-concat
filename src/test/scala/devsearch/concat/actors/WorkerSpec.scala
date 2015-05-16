@@ -20,7 +20,7 @@ class WorkerSpec(_system: ActorSystem) extends TestKit(_system) with ImplicitSen
     "send a Blob request on Begin" in {
       val pingActor = system.actorOf(Worker.props(self))
       pingActor ! Begin
-      expectMsg(BlobRequest)
+      val msg = expectMsg(BlobRequest)
     }
   }
 
